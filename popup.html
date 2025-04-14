@@ -2,14 +2,31 @@
 <html>
 <head>
   <style>
-    body { font-family: sans-serif; width: 200px; padding: 10px; }
-    button { width: 100%; margin-top: 10px; }
+    body { font-family: sans-serif; width: 250px; padding: 10px; }
+    label, select, button { display: block; margin-top: 10px; width: 100%; }
   </style>
 </head>
 <body>
   <h4>Baixar Vídeo</h4>
+
+  <label for="format">Formato:</label>
+  <select id="format">
+    <option value="mp4">MP4 (vídeo)</option>
+    <option value="mp3">MP3 (áudio)</option>
+  </select>
+
+  <label for="quality">Qualidade:</label>
+  <select id="quality">
+    <option value="best">Melhor disponível</option>
+    <option value="worst">Pior disponível</option>
+    <option value="720">720p</option>
+    <option value="480">480p</option>
+    <option value="360">360p</option>
+  </select>
+
   <button id="downloadBtn">Baixar vídeo atual</button>
-  <div id="status"></div>
+  <div id="status" style="margin-top: 10px;"></div>
+
   <script src="popup.js"></script>
 </body>
 </html>

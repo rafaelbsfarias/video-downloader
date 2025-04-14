@@ -7,12 +7,15 @@ document.getElementById("downloadBtn").addEventListener("click", async () => {
       return;
     }
   
+    const format = document.getElementById("format").value;
+    const quality = document.getElementById("quality").value;
+  
     document.getElementById("status").innerText = "Enviando requisição...";
   
     fetch("http://localhost:5000/download", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, format, quality })
     })
       .then(res => res.json())
       .then(data => {

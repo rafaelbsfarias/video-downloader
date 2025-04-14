@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Downloader Pessoal YouTube",
+    "name": "Video Downloader Pessoal",
     "version": "1.0",
     "permissions": ["activeTab", "scripting"],
     "host_permissions": ["*://*.youtube.com/*"],

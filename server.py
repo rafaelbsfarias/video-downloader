@@ -1,3 +1,5 @@
+import sys
+sys.dont_write_bytecode = True
 from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 import subprocess

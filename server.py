@@ -135,7 +135,7 @@ def baixar_video(url, format_, quality, is_playlist, save_thumb):
                 "--convert-thumbnails", "jpg"
             ]
 
-    ydl_cmd.append(url)
+    ydl_cmd.extend(["--", url])
     cmd_str = " ".join(ydl_cmd)
     logger.info("Iniciando comando: %s", cmd_str)
     emitir_evento({"log": f"$ {cmd_str}", "done": False})
@@ -374,13 +374,13 @@ def baixar_video(url, format_, quality, is_playlist, save_thumb):
 @app.route("/info", methods=["GET"])
 def info():
     url = request.args.get("url")
-    if not url:
-        return jsonify({"error": "URL não fornecida"}), 400
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify({"error": "URL inválida ou não fornecida"}), 400
     try:
         cookie_file = os.path.join(os.path.dirname(__file__), "cookies.txt")
         cookie_args = ["--cookies", cookie_file] if os.path.isfile(cookie_file) else []
         res = subprocess.run(
-            [*get_yt_dlp_cmd(), *cookie_args, "--flat-playlist", "-J", "--playlist-items", "1", url],
+            [*get_yt_dlp_cmd(), *cookie_args, "--flat-playlist", "-J", "--playlist-items", "1", "--", url],
             capture_output=True,
             text=True,
             timeout=10
@@ -423,8 +423,8 @@ def download():
     is_playlist = bool(data.get("playlist", False))
     save_thumb = bool(data.get("save_thumb", True))
 
-    if not url:
-        return jsonify({"error": "URL não fornecida"}), 400
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify({"error": "URL inválida ou não fornecida"}), 400
 
     logger.info(
         "Nova requisição /download: url=%s, format=%s, quality=%s, playlist=%s, save_thumb=%s",
@@ -456,8 +456,13 @@ def progress():
 @app.route("/files/<path:filename>", methods=["GET", "DELETE"])
 def handle_file(filename):
     output_dir = os.path.join(os.path.dirname(__file__), "downloads")
-    safe_path = os.path.abspath(os.path.join(output_dir, filename))
-    if not safe_path.startswith(os.path.abspath(output_dir)):
+    base_dir = os.path.abspath(output_dir)
+    safe_path = os.path.abspath(os.path.join(base_dir, filename))
+
+    try:
+        if os.path.commonpath([base_dir, safe_path]) != base_dir or safe_path == base_dir:
+            return jsonify({"error": "Acesso negado"}), 403
+    except ValueError:
         return jsonify({"error": "Caminho inválido"}), 400
 
     if request.method == "DELETE":

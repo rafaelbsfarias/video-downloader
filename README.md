@@ -7,6 +7,8 @@ A extensão captura a URL do vídeo/playlist atual no navegador, envia para o se
 ## 🚀 Funcionalidades
 
 - **Download Remoto & Transferência Local:** O processamento pesado e downloads ocorrem no servidor VPS remoto (`orion` via Tailscale) e, ao finalizar, os arquivos são transferidos automaticamente para a máquina local via API do Chrome Downloads.
+- **Auto-limpeza no Servidor Remoto (Zero Armazenamento Persistente):** Assim que a extensão conclui a gravação do arquivo na sua máquina local, ela envia uma requisição `DELETE /files/<filename>` ao backend, apagando o arquivo imediatamente do disco do servidor. Um processo em segundo plano no servidor também purga arquivos com mais de 15 minutos como segurança contra conexões interrompidas.
+- **Compatibilidade Universal (H.264 + AAC):** Em vez de empacotar formatos proprietários ou que exigem codecs adicionais (como AV1 ou Opus), os arquivos MP4 são obrigatoriamente gerados em H.264 (`avc1`) e áudio AAC (`mp4a`), garantindo reprodução perfeita de imagem e som em qualquer player (Linux, Windows, macOS, smart TVs, celulares).
 - **Opção "Salvar Como" na Máquina Local:** Checkbox na extensão permitindo escolher se o arquivo deve abrir o seletor nativo do sistema operacional para escolher a pasta de destino ou salvar direto no diretório padrão de downloads.
 - **Suporte a Vídeos Individuais e Playlists:** Detecção automática de playlists com opção de baixar todos os itens sequencialmente com tratamento de falhas por item.
 - **Formatos Suportados:**

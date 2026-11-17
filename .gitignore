@@ -266,3 +266,4 @@ pyrightconfig.json
 *.zip
 *.log
 download_playlist_agent.py
+cookies.txt

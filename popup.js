@@ -20,6 +20,38 @@ const logDetails = document.getElementById("logDetails");
 
 let currentTabUrl = "";
 
+function deleteRemoteFile(filePath) {
+  const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
+  const fileNameOnly = filePath.split("/").pop() || filePath;
+  fetch(`${SERVER_URL}/files/${encodedPath}`, { method: "DELETE" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "sucesso") {
+        appendLog(`🗑️ Limpeza: ${fileNameOnly} removido do servidor remoto.`);
+      }
+    })
+    .catch(err => {
+      console.warn("Erro ao remover do remoto:", err);
+    });
+}
+
+function watchLocalDownloadAndCleanup(downloadId, filePath) {
+  const fileNameOnly = filePath.split("/").pop() || filePath;
+  const listener = function (delta) {
+    if (delta.id === downloadId) {
+      if (delta.state && delta.state.current === "complete") {
+        chrome.downloads.onChanged.removeListener(listener);
+        appendLog(`✅ Salvo na máquina local: ${fileNameOnly}`);
+        deleteRemoteFile(filePath);
+      } else if (delta.state && delta.state.current === "interrupted") {
+        chrome.downloads.onChanged.removeListener(listener);
+        appendLog(`⚠️ Download local interrompido: ${delta.error?.current || ""}`);
+      }
+    }
+  };
+  chrome.downloads.onChanged.addListener(listener);
+}
+
 function appendLog(text, timeStr) {
   if (!text) return;
   const line = document.createElement("div");
@@ -31,7 +63,7 @@ function appendLog(text, timeStr) {
     logDetails.open = true;
   } else if (text.includes("⚠️") || text.includes("WARNING:")) {
     line.className = "log-warn";
-  } else if (text.startsWith("$") || text.includes("🎬") || text.includes("📋") || text.includes("💾") || text.includes("📦")) {
+  } else if (text.startsWith("$") || text.includes("🎬") || text.includes("📋") || text.includes("💾") || text.includes("📦") || text.includes("🗑️") || text.includes("✅")) {
     line.className = "log-info";
   }
 
@@ -241,6 +273,9 @@ downloadBtn.addEventListener("click", () => {
                     link.style.marginTop = "4px";
                     link.style.color = "#2563eb";
                     link.target = "_blank";
+                    link.addEventListener("click", () => {
+                      setTimeout(() => deleteRemoteFile(filePath), 10000);
+                    });
                     localFilesContainer.appendChild(link);
                   }
 
@@ -254,6 +289,7 @@ downloadBtn.addEventListener("click", () => {
                         appendLog(`❌ Erro no download local (${fileNameOnly}): ${chrome.runtime.lastError.message}`);
                       } else {
                         appendLog(`💾 Salvando localmente: ${fileNameOnly} (ID: ${downloadId})`);
+                        watchLocalDownloadAndCleanup(downloadId, filePath);
                       }
                     });
                   }

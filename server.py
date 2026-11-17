@@ -111,17 +111,26 @@ def baixar_video(url, format_, quality, is_playlist, save_thumb):
                 "--convert-thumbnails", "jpg"
             ]
     else:
+        # MP4 - Prioriza H.264 (avc1) e AAC (mp4a) para compatibilidade universal em qualquer player de vídeo
         if quality == "best":
-            ydl_cmd += ["-f", "bestvideo+bestaudio/best", "--merge-output-format", "mp4"]
+            ydl_cmd += [
+                "-f", "bestvideo[vcodec^=avc]+bestaudio[acodec^=mp4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best",
+                "--merge-output-format", "mp4"
+            ]
         elif quality == "worst":
-            ydl_cmd += ["-f", "worstvideo+worstaudio/worst", "--merge-output-format", "mp4"]
+            ydl_cmd += [
+                "-f", "worstvideo[vcodec^=avc]+worstaudio[acodec^=mp4a]/worstvideo+worstaudio/worst",
+                "--merge-output-format", "mp4"
+            ]
         elif quality in ["1080", "720", "480", "360"]:
-            ydl_cmd += ["-f", f"bestvideo[height<={quality}]+bestaudio/best", "--merge-output-format", "mp4"]
+            ydl_cmd += [
+                "-f", f"bestvideo[height<={quality}][vcodec^=avc]+bestaudio[acodec^=mp4a]/bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/best[height<={quality}]/best",
+                "--merge-output-format", "mp4"
+            ]
         else:
             ydl_cmd += ["-f", quality, "--merge-output-format", "mp4"]
         if save_thumb:
             ydl_cmd += [
-                "--embed-thumbnail",
                 "--write-thumbnail",
                 "--convert-thumbnails", "jpg"
             ]
@@ -444,13 +453,68 @@ def progress():
     return Response(event_stream(), mimetype="text/event-stream")
 
 
-@app.route("/files/<path:filename>", methods=["GET"])
-def get_file(filename):
+@app.route("/files/<path:filename>", methods=["GET", "DELETE"])
+def handle_file(filename):
     output_dir = os.path.join(os.path.dirname(__file__), "downloads")
     safe_path = os.path.abspath(os.path.join(output_dir, filename))
-    if not safe_path.startswith(os.path.abspath(output_dir)) or not os.path.isfile(safe_path):
+    if not safe_path.startswith(os.path.abspath(output_dir)):
+        return jsonify({"error": "Caminho inválido"}), 400
+
+    if request.method == "DELETE":
+        if not os.path.isfile(safe_path):
+            return jsonify({"status": "ja_removido"}), 200
+        try:
+            os.remove(safe_path)
+            logger.info("Arquivo removido do servidor com sucesso: %s", filename)
+            parent_dir = os.path.dirname(safe_path)
+            if parent_dir != os.path.abspath(output_dir) and os.path.isdir(parent_dir):
+                if not os.listdir(parent_dir):
+                    os.rmdir(parent_dir)
+            return jsonify({"status": "sucesso", "deleted": filename})
+        except Exception as exc:
+            logger.error("Erro ao remover %s: %s", filename, exc)
+            return jsonify({"error": str(exc)}), 500
+
+    # GET
+    if not os.path.isfile(safe_path):
         return jsonify({"error": "Arquivo não encontrado"}), 404
     return send_from_directory(output_dir, filename, as_attachment=True)
+
+
+def iniciar_auto_cleanup():
+    def cleanup_loop():
+        while True:
+            time.sleep(120)  # Checa a cada 2 minutos
+            try:
+                output_dir = os.path.join(os.path.dirname(__file__), "downloads")
+                if not os.path.exists(output_dir):
+                    continue
+                now = time.time()
+                for root, dirs, files in os.walk(output_dir, topdown=False):
+                    for f in files:
+                        fpath = os.path.join(root, f)
+                        # Remove arquivos que fiquem no servidor por mais de 15 minutos
+                        if now - os.path.getmtime(fpath) > 900:
+                            try:
+                                os.remove(fpath)
+                                logger.info("Auto-cleanup removeu arquivo expirado: %s", f)
+                            except Exception:
+                                pass
+                    for d in dirs:
+                        dpath = os.path.join(root, d)
+                        if not os.listdir(dpath):
+                            try:
+                                os.rmdir(dpath)
+                            except Exception:
+                                pass
+            except Exception as exc:
+                logger.error("Erro no auto_cleanup: %s", exc)
+
+    t = threading.Thread(target=cleanup_loop, daemon=True)
+    t.start()
+
+
+iniciar_auto_cleanup()
 
 
 if __name__ == "__main__":

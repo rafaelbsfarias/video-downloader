@@ -2,10 +2,14 @@
     "manifest_version": 3,
     "name": "Video Downloader Pessoal",
     "version": "1.0",
-    "permissions": ["activeTab", "scripting"],
-    "host_permissions": ["*://*.youtube.com/*"],
+    "permissions": ["activeTab", "scripting", "downloads", "storage"],
+    "host_permissions": [
+      "*://*.youtube.com/*",
+      "http://100.98.54.48:*/*",
+      "http://orion:*/*"
+    ],
     "action": {
       "default_popup": "popup.html"
     }
-  }
+}
   
